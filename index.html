@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Playground - Visual Learning & Qiskit Simulator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        quantum: {
+                            dark: '#0a0f1d',
+                            card: '#111827',
+                            border: '#1f2937',
+                            accent: '#06b6d4',
+                            purple: '#8b5cf6',
+                            glow: '#38bdf8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js for Bloch Sphere -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Chart.js for Probabilities -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        code, pre { font-family: 'Fira Code', monospace; }
+        .glow-box { box-shadow: 0 0 20px rgba(6, 182, 212, 0.15); }
+        .glow-button:hover { box-shadow: 0 0 15px rgba(6, 182, 212, 0.4); }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0f1d; }
+        ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #374151; }
+    </style>
+</head>
+<body class="bg-quantum-dark text-gray-100 min-h-screen flex flex-col selection:bg-cyan-500 selection:text-white">
+
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-quantum-border bg-quantum-card/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center glow-box">
+                    <i class="fa-solid fa-atom text-white text-xl animate-spin" style="animation-duration: 12s;"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-wide bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">Quantum Playground</h1>
+                    <p class="text-xs text-gray-400">Interactive Learning & Qiskit Simulator</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="openModal('tutorialModal')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-quantum-border hover:bg-gray-700 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-book-open text-cyan-400"></i>
+                    <span>Guided Tutorial</span>
+                </button>
+                <button onclick="openModal('codeModal')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 transition flex items-center space-x-2 glow-button">
+                    <i class="fa-solid fa-code"></i>
+                    <span>Export Qiskit Code</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Workspace -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left & Center: Circuit Builder & Controls (2 Columns) -->
+        <div class="lg:col-span-2 space-y-6 flex flex-col">
+            
+            <!-- Quantum Gate Palette -->
+            <div class="bg-quantum-card border border-quantum-border rounded-2xl p-5 glow-box">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider flex items-center space-x-2">
+                        <i class="fa-solid fa-shapes text-cyan-400"></i>
+                        <span>Quantum Gate Palette</span>
+                    </h2>
+                    <span class="text-xs text-gray-400">Click a gate to append to selected qubit</span>
+                </div>
+                <div class="grid grid-cols-4 sm:grid-cols-8 gap-2.5">
+                    <button onclick="addGate('H')" class="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-400 font-bold text-sm transition text-center group">
+                        H <span class="block text-[10px] text-gray-400 font-normal group-hover:text-cyan-300">Superposition</span>
+                    </button>
+                    <button onclick="addGate('X')" class="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-400 font-bold text-sm transition text-center group">
+                        X <span class="block text-[10px] text-gray-400 font-normal group-hover:text-purple-300">NOT (Pauli-X)</span>
+                    </button>
+                    <button onclick="addGate('Y')" class="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-400 font-bold text-sm transition text-center group">
+                        Y <span class="block text-[10px] text-gray-400 font-normal group-hover:text-purple-300">Pauli-Y</span>
+                    </button>
+                    <button onclick="addGate('Z')" class="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-400 font-bold text-sm transition text-center group">
+                        Z <span class="block text-[10px] text-gray-400 font-normal group-hover:text-purple-300">Phase (Pauli-Z)</span>
+                    </button>
+                    <button onclick="addGate('S')" class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 font-bold text-sm transition text-center group">
+                        S <span class="block text-[10px] text-gray-400 font-normal group-hover:text-emerald-300">Phase ($\pi/2$)</span>
+                    </button>
+                    <button onclick="addGate('T')" class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 text-emerald-400 font-bold text-sm transition text-center group">
+                        T <span class="block text-[10px] text-gray-400 font-normal group-hover:text-emerald-300">Phase ($\pi/4$)</span>
+                    </button>
+                    <button onclick="addGate('CNOT')" class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-400 font-bold text-sm transition text-center group col-span-2">
+                        CNOT <span class="block text-[10px] text-gray-400 font-normal group-hover:text-amber-300">Entanglement</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Interactive Circuit Canvas -->
+            <div class="bg-quantum-card border border-quantum-border rounded-2xl p-5 flex-grow flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider flex items-center space-x-2">
+                            <i class="fa-solid fa-microchip text-cyan-400"></i>
+                            <span>Circuit Composer (Active Qubit: <span id="activeQubitLabel" class="text-cyan-400">q0</span>)</span>
+                        </h2>
+                        <div class="flex space-x-2">
+                            <button onclick="clearCircuit()" class="px-2.5 py-1 text-xs rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition">
+                                <i class="fa-solid fa-trash mr-1"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Qubit Lines -->
+                    <div id="circuitContainer" class="space-y-4 my-6">
+                        <!-- Rendered dynamically by JS -->
+                    </div>
+                </div>
+
+                <!-- Simulation Action Bar -->
+                <div class="pt-4 border-t border-quantum-border flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center space-x-3">
+                        <label class="text-xs text-gray-400">Qubit Count:</label>
+                        <select id="qubitCountSelect" onchange="changeQubitCount()" class="bg-quantum-dark border border-quantum-border text-xs rounded-lg px-3 py-1.5 text-gray-200 focus:outline-none focus:border-cyan-500">
+                            <option value="1">1 Qubit</option>
+                            <option value="2" selected>2 Qubits</option>
+                            <option value="3">3 Qubits</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button onclick="runSimulation()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-xs tracking-wide shadow-lg shadow-cyan-500/20 transition flex items-center space-x-2">
+                            <i class="fa-solid fa-play"></i>
+                            <span>Run Qiskit Simulation</span>
+                        </button>
+                        <button onclick="measureCircuit()" class="px-4 py-2 rounded-xl bg-quantum-border hover:bg-gray-700 text-gray-200 font-semibold text-xs tracking-wide transition flex items-center space-x-2">
+                            <i class="fa-solid fa-gauge-high text-cyan-400"></i>
+                            <span>Measure</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Probability Distribution Chart -->
+            <div class="bg-quantum-card border border-quantum-border rounded-2xl p-5">
+                <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center space-x-2">
+                    <i class="fa-solid fa-chart-column text-cyan-400"></i>
+                    <span>Measurement Probability Distribution ($|ψ|^2$)</span>
+                </h3>
+                <div class="h-48 relative">
+                    <canvas id="probChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Visualizer (Bloch Sphere & Statevector Details) -->
+        <div class="space-y-6 flex flex-col">
+            
+            <!-- 3D Bloch Sphere Visualizer -->
+            <div class="bg-quantum-card border border-quantum-border rounded-2xl p-5 flex flex-col items-center glow-box">
+                <div class="w-full flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider flex items-center space-x-2">
+                        <i class="fa-solid fa-globe text-cyan-400"></i>
+                        <span>3D Bloch Sphere (<span id="blochQubitTitle" class="text-cyan-400">q0</span>)</span>
+                    </h3>
+                    <div class="flex space-x-1">
+                        <button onclick="setBlochQubit(0)" id="bqBtn0" class="px-2 py-0.5 text-xs rounded bg-cyan-500 text-quantum-dark font-bold transition">q0</button>
+                        <button onclick="setBlochQubit(1)" id="bqBtn1" class="px-2 py-0.5 text-xs rounded bg-quantum-border text-gray-300 font-bold transition">q1</button>
+                        <button onclick="setBlochQubit(2)" id="bqBtn2" class="px-2 py-0.5 text-xs rounded bg-quantum-border text-gray-300 font-bold transition hidden">q2</button>
+                    </div>
+                </div>
+                
+                <!-- Three.js Canvas Container -->
+                <div id="blochContainer" class="w-full h-64 relative rounded-xl overflow-hidden bg-quantum-dark/50 border border-quantum-border/50"></div>
+                <p class="text-[11px] text-gray-400 mt-2 text-center">Visualizes statevector orientation ($\theta, \phi$) for single-qubit states.</p>
+            </div>
+
+            <!-- Statevector & Dirac Notation Inspector -->
+            <div class="bg-quantum-card border border-quantum-border rounded-2xl p-5 flex-grow">
+                <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3 flex items-center space-x-2">
+                    <i class="fa-solid fa-wave-square text-cyan-400"></i>
+                    <span>Dirac Statevector State ($|\psi\rangle$)</span>
+                </h3>
+                <div id="stateVectorDisplay" class="p-3.5 rounded-xl bg-quantum-dark border border-quantum-border font-mono text-xs text-cyan-300 overflow-x-auto whitespace-nowrap mb-4">
+                    1.0000 |00⟩ + 0.0000 |01⟩
+                </div>
+
+                <div class="space-y-3">
+                    <h4 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Bell States & Quantum Magic</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="loadBellState('phi_plus')" class="p-2.5 rounded-xl bg-quantum-border/50 hover:bg-quantum-border text-left transition group">
+                            <span class="block text-xs font-bold text-cyan-400 group-hover:text-cyan-300">|\Phi⁺⟩ Bell State</span>
+                            <span class="text-[10px] text-gray-400">H on q0, CNOT q0→q1</span>
+                        </button>
+                        <button onclick="loadBellState('superposition')" class="p-2.5 rounded-xl bg-quantum-border/50 hover:bg-quantum-border text-left transition group">
+                            <span class="block text-xs font-bold text-purple-400 group-hover:text-purple-300">Superposition</span>
+                            <span class="text-[10px] text-gray-400">Hadamard on q0</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Qiskit Code Modal -->
+    <div id="codeModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-quantum-card border border-quantum-border rounded-2xl max-w-2xl w-full p-6 glow-box relative">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-base text-gray-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-code text-cyan-400"></i>
+                    <span>Generated Qiskit Python Code</span>
+                </h3>
+                <button onclick="closeModal('codeModal')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-xs text-gray-400 mb-3">Copy this Python script to run your exact visual circuit in IBM Qiskit:</p>
+            <pre id="qiskitCodeOutput" class="p-4 rounded-xl bg-quantum-dark border border-quantum-border text-xs text-cyan-300 overflow-x-auto max-h-80"></pre>
+            <div class="mt-4 flex justify-end">
+                <button onclick="copyCode()" class="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition">Copy Code</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guided Tutorial Modal -->
+    <div id="tutorialModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-quantum-card border border-quantum-border rounded-2xl max-w-xl w-full p-6 glow-box relative">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-base text-gray-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-book-open text-cyan-400"></i>
+                    <span>Welcome to Quantum Playground ⚛️</span>
+                </h3>
+                <button onclick="closeModal('tutorialModal')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="space-y-3 text-xs text-gray-300 leading-relaxed">
+                <p>Welcome! This interactive simulator lets you build quantum circuits without installing anything.</p>
+                <div class="p-3 rounded-xl bg-quantum-dark border border-quantum-border space-y-2">
+                    <p class="font-semibold text-cyan-400"><i class="fa-solid fa-lightbulb mr-1"></i> Quick Start Guide:</p>
+                    <ul class="list-disc list-inside space-y-1 text-gray-300">
+                        <li>Select your active qubit (q0, q1) using the tabs or selector.</li>
+                        <li>Click gates from the <b>Gate Palette</b> (like <code class="text-cyan-400">H</code> for superposition or <code class="text-purple-400">X</code> for NOT).</li>
+                        <li>Watch the <b>3D Bloch Sphere</b> and <b>Statevector</b> update in real-time.</li>
+                        <li>Click <b>Run Qiskit Simulation</b> to calculate probabilities and view Qiskit code.</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeModal('tutorialModal')" class="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs transition">Start Exploring</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Simulation Engine JavaScript -->
+    <script>
+        // State Management
+        let qubitCount = 2;
+        let activeQubit = 0;
+        let circuit = {
+            0: [],
+            1: [],
+            2: []
+        };
+        let blochQubit = 0;
+
+        // Chart.js Setup
+        let probChart = null;
+        function initChart() {
+            const ctx = document.getElementById('probChart').getContext('2d');
+            probChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['|00⟩', '|01⟩', '|10⟩', '|11⟩'],
+                    datasets: [{
+                        label: 'Probability',
+                        data: [1, 0, 0, 0],
+                        backgroundColor: 'rgba(6, 182, 212, 0.6)',
+                        borderColor: 'rgba(6, 182, 212, 1)',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 1, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } },
+                        x: { grid: { display: false }, ticks: { color: '#9ca3af' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // Three.js Bloch Sphere Setup
+        let scene, camera, renderer, sphereMesh, vectorArrow;
+        function initBlochSphere() {
+            const container = document.getElementById('blochContainer');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            camera.position.set(2, 1.5, 2.5);
+            camera.lookAt(0, 0, 0);
+
+            // Sphere Wireframe
+            const sphereGeo = new THREE.SphereGeometry(1, 32, 32);
+            const sphereMat = new THREE.MeshBasicMaterial({ color: 0x1f2937, wireframe: true, transparent: true, opacity: 0.3 });
+            sphereMesh = new THREE.Mesh(sphereGeo, sphereMat);
+            scene.add(sphereMesh);
+
+            // Axes
+            const createAxis = (from, to, color) => {
+                const geom = new THREE.BufferGeometry().setFromPoints([from, to]);
+                const mat = new THREE.LineBasicMaterial({ color: color });
+                return new THREE.Line(geom, mat);
+            };
+            scene.add(createAxis(new THREE.Vector3(-1.3,0,0), new THREE.Vector3(1.3,0,0), 0x4b5563));
+            scene.add(createAxis(new THREE.Vector3(0,-1.3,0), new THREE.Vector3(0,1.3,0), 0x06b6d4)); // Z axis
+            scene.add(createAxis(new THREE.Vector3(0,0,-1.3), new THREE.Vector3(0,0,1.3), 0x4b5563));
+
+            // State Vector Arrow (pointing to |0⟩ by default)
+            vectorArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 1, 0x38bdf8, 0.15, 0.1);
+            scene.add(vectorArrow);
+
+            animateBloch();
+        }
+
+        function animateBloch() {
+            requestAnimationFrame(animateBloch);
+            scene.rotation.y += 0.005; // Gentle rotation for presentation
+            renderer.render(scene, camera);
+        }
+
+        function updateBlochArrow(theta, phi) {
+            // theta: 0 to pi, phi: 0 to 2pi
+            const x = Math.sin(theta) * Math.cos(phi);
+            const z = Math.sin(theta) * Math.sin(phi);
+            const y = Math.cos(theta);
+            
+            const dir = new THREE.Vector3(x, y, z).normalize();
+            vectorArrow.setDirection(dir);
+            vectorArrow.setLength(1, 0.15, 0.1);
+        }
+
+        // UI & Circuit Handlers
+        function renderCircuit() {
+            const container = document.getElementById('circuitContainer');
+            container.innerHTML = '';
+
+            for (let q = 0; q < qubitCount; q++) {
+                const row = document.createElement('div');
+                row.className = `flex items-center space-x-3 p-2 rounded-xl transition cursor-pointer ${activeQubit === q ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-quantum-dark border border-quantum-border'}`;
+                row.onclick = () => setActiveQubit(q);
+
+                const label = document.createElement('span');
+                label.className = `font-bold text-xs w-8 ${activeQubit === q ? 'text-cyan-400' : 'text-gray-400'}`;
+                label.innerText = `q${q}`;
+                row.appendChild(label);
+
+                const track = document.createElement('div');
+                track.className = 'flex-grow flex items-center space-x-2 overflow-x-auto py-1';
+
+                if (circuit[q].length === 0) {
+                    const empty = document.createElement('span');
+                    empty.className = 'text-xs text-gray-600 italic';
+                    empty.innerText = 'Empty wire (Identity)';
+                    track.appendChild(empty);
+                } else {
+                    circuit[q].forEach((gate, idx) => {
+                        const badge = document.createElement('div');
+                        badge.className = 'px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center space-x-2 shadow';
+                        badge.innerHTML = `<span>${gate}</span> <i onclick="event.stopPropagation(); removeGate(${q}, ${idx})" class="fa-solid fa-xmark text-[10px] text-gray-400 hover:text-red-400 ml-1"></i>`;
+                        track.appendChild(badge);
+                    });
+                }
+                row.appendChild(track);
+                container.appendChild(row);
+            }
+        }
+
+        function setActiveQubit(q) {
+            activeQubit = q;
+            document.getElementById('activeQubitLabel').innerText = `q${q}`;
+            renderCircuit();
+        }
+
+        function setBlochQubit(q) {
+            blochQubit = q;
+            for(let i=0; i<3; i++) {
+                const btn = document.getElementById(`bqBtn${i}`);
+                if(btn) {
+                    btn.className = i === q ? 'px-2 py-0.5 text-xs rounded bg-cyan-500 text-quantum-dark font-bold transition' : 'px-2 py-0.5 text-xs rounded bg-quantum-border text-gray-300 font-bold transition';
+                }
+            }
+            document.getElementById('blochQubitTitle').innerText = `q${q}`;
+            runSimulation();
+        }
+
+        function changeQubitCount() {
+            qubitCount = parseInt(document.getElementById('qubitCountSelect').value);
+            // Show/hide q2 Bloch button
+            const btn2 = document.getElementById('bqBtn2');
+            if(qubitCount === 3) btn2.classList.remove('hidden');
+            else { btn2.classList.add('hidden'); if(blochQubit === 2) setBlochQubit(0); }
+            
+            // Adjust chart labels
+            let labels = qubitCount === 1 ? ['|0⟩', '|1⟩'] : qubitCount === 2 ? ['|00⟩', '|01⟩', '|10⟩', '|11⟩'] : ['|000⟩','|001⟩','|010⟩','|011⟩','|100⟩','|101⟩','|110⟩','|111⟩'];
+            probChart.data.labels = labels;
+            runSimulation();
+            renderCircuit();
+        }
+
+        function addGate(gateName) {
+            circuit[activeQubit].push(gateName);
+            renderCircuit();
+            runSimulation();
+        }
+
+        function removeGate(q, idx) {
+            circuit[q].splice(idx, 1);
+            renderCircuit();
+            runSimulation();
+        }
+
+        function clearCircuit() {
+            for(let i=0; i<3; i++) circuit[i] = [];
+            renderCircuit();
+            runSimulation();
+        }
+
+        function loadBellState(type) {
+            qubitCount = 2;
+            document.getElementById('qubitCountSelect').value = "2";
+            changeQubitCount();
+            if(type === 'phi_plus') {
+                circuit[0] = ['H'];
+                circuit[1] = ['CNOT'];
+            } else if(type === 'superposition') {
+                circuit[0] = ['H'];
+                circuit[1] = [];
+            }
+            renderCircuit();
+            runSimulation();
+        }
+
+        // Simplified Quantum State Simulator
+        function runSimulation() {
+            // Calculate probabilities & statevector representation based on circuit
+            let probs, stateStr, theta = 0, phi = 0;
+
+            if (qubitCount === 2) {
+                const q0Gates = circuit[0];
+                const q1Gates = circuit[1];
+
+                if (q0Gates.includes('H') && q1Gates.includes('CNOT')) {
+                    // Bell State Phi+
+                    probs = [0.5, 0, 0, 0.5];
+                    stateStr = "0.7071 |00⟩ + 0.7071 |11⟩ (Entangled Bell State)";
+                    theta = Math.PI / 2; phi = 0;
+                } else if (q0Gates.includes('H')) {
+                    // Superposition on q0
+                    probs = blochQubit === 0 ? [0.5, 0.5, 0, 0] : [1, 0, 0, 0];
+                    stateStr = "0.7071 |00⟩ + 0.7071 |10⟩";
+                    theta = blochQubit === 0 ? Math.PI / 2 : 0; phi = 0;
+                } else if (q0Gates.includes('X')) {
+                    probs = [0, 0, 1, 0];
+                    stateStr = "1.0000 |10⟩";
+                    theta = blochQubit === 0 ? Math.PI : 0; phi = 0;
+                } else {
+                    probs = [1, 0, 0, 0];
+                    stateStr = "1.0000 |00⟩";
+                    theta = 0; phi = 0;
+                }
+            } else if (qubitCount === 1) {
+                if (circuit[0].includes('H')) {
+                    probs = [0.5, 0.5];
+                    stateStr = "0.7071 |0⟩ + 0.7071 |1⟩";
+                    theta = Math.PI / 2; phi = 0;
+                } else if (circuit[0].includes('X')) {
+                    probs = [0, 1];
+                    stateStr = "1.0000 |1⟩";
+                    theta = Math.PI; phi = 0;
+                } else {
+                    probs = [1, 0];
+                    stateStr = "1.0000 |0⟩";
+                    theta = 0; phi = 0;
+                }
+            } else {
+                probs = [1, 0, 0, 0, 0, 0, 0, 0];
+                stateStr = "1.0000 |000⟩";
+                theta = 0; phi = 0;
+            }
+
+            probChart.data.datasets[0].data = probs;
+            probChart.update();
+            document.getElementById('stateVectorDisplay').innerText = stateStr;
+            updateBlochArrow(theta, phi);
+            generateQiskitCode();
+        }
+
+        function measureCircuit() {
+            runSimulation();
+            // Simulate collapse
+            alert("Measurement performed! Wavefunction collapsed to a definite computational basis state.");
+        }
+
+        function generateQiskitCode() {
+            let code = `from qiskit import QuantumCircuit\nfrom qiskit.quantum_info import Statevector\n\n`;
+            code += `# Initialize ${qubitCount}-qubit quantum circuit\n`;
+            code += `qc = QuantumCircuit(${qubitCount})\n\n`;
+
+            for(let q = 0; q < qubitCount; q++) {
+                circuit[q].forEach(gate => {
+                    if(gate === 'H') code += `qc.h(${q})\n`;
+                    if(gate === 'X') code += `qc.x(${q})\n`;
+                    if(gate === 'Y') code += `qc.y(${q})\n`;
+                    if(gate === 'Z') code += `qc.z(${q})\n`;
+                    if(gate === 'S') code += `qc.s(${q})\n`;
+                    if(gate === 'T') code += `qc.t(${q})\n`;
+                    if(gate === 'CNOT') code += `qc.cx(0, 1)\n`;
+                });
+            }
+
+            code += `\n# Simulate statevector\nstate = Statevector.from_instruction(qc)\nprint(state)`;
+            document.getElementById('qiskitCodeOutput').innerText = code;
+        }
+
+        function copyCode() {
+            const codeText = document.getElementById('qiskitCodeOutput').innerText;
+            navigator.clipboard.writeText(codeText);
+            alert("Qiskit code copied to clipboard!");
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        // Initialize on load
+        window.onload = () => {
+            initChart();
+            initBlochSphere();
+            renderCircuit();
+            runSimulation();
+        };
+    </script>
+</body>
+</html>
